@@ -37,5 +37,9 @@ def get_countries(url):
     return countries
 
 
+def populate_database(countries):
+    pass
+
+
 if __name__ == '__main__':
     print(get_countries(BASE_URL + '/wiki/List_of_sovereign_states'))
