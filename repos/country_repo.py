@@ -8,3 +8,8 @@ session = sessionmaker(bind=engine)()
 
 def get_all_countries():
     return session.query(model.Country).all()
+
+
+def insert_country(country):
+    session.add(country)
+    session.commit()
