@@ -10,6 +10,8 @@ def get_all_countries():
     return session.query(model.Country).all()
 
 
-def insert_country(country):
-    session.add(country)
+def insert_countries(countries):
+    print('Inserting countries into database...')
+    session.add_all(countries)
     session.commit()
+    print('Done!')

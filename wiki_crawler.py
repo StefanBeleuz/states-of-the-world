@@ -1,6 +1,8 @@
 from bs4 import BeautifulSoup
 import requests
 import re
+import models.country_model as model
+import repos.country_repo as repo
 
 BASE_URL = 'https://en.wikipedia.org'
 
@@ -39,7 +41,8 @@ def get_countries(url):
 
 
 def get_country_info(country_name, country_url):
-    info = {'name': country_name}
+    info = {'name': country_name, 'capital': None, 'population': None, 'density': None, 'area': None, 'language': None,
+            'time_zone': None, 'government': None}
 
     number_regex = re.compile('\\d+\\.?\\d*')
     citations_regex = re.compile('\\[.+?]')
@@ -55,30 +58,33 @@ def get_country_info(country_name, country_url):
         rows = table.find_all('tr')
         for row in rows:
             try:
-                th_text = row.find('th').text
-                if 'Capital' in th_text:
+                th_text = row.find('th').text.lower()
+                if 'capital' in th_text:
                     text = row.find('td').find('a').text.strip()
                     info['capital'] = citations_regex.sub('', text)
-                elif 'Population' in th_text:
+                elif 'population' in th_text:
                     text = row.next_sibling.find('td').text.strip().replace(',', '')
                     info['population'] = int(re.search('\\d+', text).group(0))
-                elif 'Density' in th_text:
+                elif 'density' in th_text:
                     text = row.find('td').text.strip()
                     info['density'] = float(number_regex.search(text).group(0))
-                elif 'Area' in th_text:
+                elif 'area' in th_text:
                     text = row.next_sibling.find('td').text.strip().replace(',', '')
                     info['area'] = float(number_regex.search(text).group(0))
-                elif 'Official' in th_text and 'language' in th_text:
-                    languages = []
+                elif ('official' in th_text or 'national' in th_text) and 'language' in th_text \
+                        and 'recognised' not in th_text:
+                    languages = set()
                     for a in row.find('td').find_all('a'):
                         text = a.text.strip()
-                        if re.match('[A-Za-z]+', text):
-                            languages.append(text)
-                    info['language'] = languages
-                elif 'Time zone' in th_text:
+                        if re.match('[A-Za-z]+', text) and len(text) > 2:
+                            languages.add(text)
+                    if len(languages) == 0:
+                        languages.add(row.find('td').text.strip())
+                    info['language'] = ','.join(languages)
+                elif 'time zone' in th_text:
                     text = row.find('td').text.strip()
-                    info['time_zone'] = re.search('UTC[+-]\\d+', text).group(0)
-                elif 'Government' in th_text:
+                    info['time_zone'] = re.search('UTC(.\\d+)?|GMT(.\\d+)?', text).group(0)
+                elif 'government' == th_text:
                     text = row.find('td').text.strip()
                     info['government'] = citations_regex.sub('', text)
             except AttributeError:
@@ -88,10 +94,17 @@ def get_country_info(country_name, country_url):
 
 
 def populate_database(countries):
+    print('Getting info about countries...')
+    countries_obj = []
     for country_name, country_url in countries.items():
         country_name = country_name.replace('_', ' ')
-        print(get_country_info(country_name, BASE_URL + country_url))
+        info = get_country_info(country_name, BASE_URL + country_url)
+        countries_obj.append(model.Country(name=info['name'], capital=info['capital'], population=info['population'],
+                                           density=info['density'], area=info['area'], language=info['language'],
+                                           time_zone=info['time_zone'], government=info['government']))
+    repo.insert_countries(countries_obj)
 
 
 if __name__ == '__main__':
-    print(populate_database(get_countries(BASE_URL + '/wiki/List_of_sovereign_states')))
+    populate_database(get_countries(BASE_URL + '/wiki/List_of_sovereign_states'))
+    # print(get_country_info('Ethiopia', BASE_URL + '/wiki/Antigua_and_Barbuda'))
