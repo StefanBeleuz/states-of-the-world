@@ -19,32 +19,32 @@ def get_countries(url):
         # get rows from table
         rows = countries_table.find_all('tr')
         for row in rows:
-            # select the cell with country names
-            cell = row.find('td')
-            if cell is not None:
+            try:
+                # select the cell with country names
+                cell = row.find('td')
+                if 'other states' in cell.text.lower():
+                    break
                 # get span with country name
                 span = cell.find('span')
-                if span is not None:
-                    try:
-                        # get country name
-                        country_name = span['id']
-                        # get country page url
-                        a = cell.find('b').find('a')
-                        if a is not None:
-                            country_url = a['href']
-                            # add country to dict
-                            countries[country_name] = country_url
-                    except KeyError:
-                        pass
+                # get country name
+                country_name = span['id']
+                # get country page url
+                a = cell.find('b').find('a')
+                country_url = a['href']
+                # add country to dict
+                countries[country_name] = country_url
+            except (KeyError, AttributeError):
+                pass
 
     return countries
 
 
 def get_country_info(country_name, country_url):
+    print('Getting information about: %s...' % country_name)
+
     info = {'name': country_name, 'capital': None, 'population': None, 'density': None, 'area': None, 'language': None,
             'time_zone': None, 'government': None}
 
-    number_regex = re.compile('\\d+\\.?\\d*')
     citations_regex = re.compile('\\[.+?]')
 
     # get html of wiki page
@@ -60,24 +60,21 @@ def get_country_info(country_name, country_url):
             try:
                 th_text = row.find('th').text.lower()
                 if 'capital' in th_text:
-                    text = row.find('td').find('a').text.strip()
-                    info['capital'] = citations_regex.sub('', text)
+                    text = row.find('td').text.strip()
+                    info['capital'] = re.search('[^0-9()\\[\\]]+', text).group(0).strip()
                 elif 'population' in th_text:
                     text = row.next_sibling.find('td').text.strip().replace(',', '')
                     info['population'] = int(re.search('\\d+', text).group(0))
                 elif 'density' in th_text:
-                    text = row.find('td').text.strip()
-                    info['density'] = float(number_regex.search(text).group(0))
+                    text = row.find('td').text.strip().replace(',', '')
+                    info['density'] = float(re.search('\\d+\\.?\\d*', text).group(0))
                 elif 'area' in th_text:
                     text = row.next_sibling.find('td').text.strip().replace(',', '')
-                    info['area'] = float(number_regex.search(text).group(0))
+                    info['area'] = float(re.search('\\d+\\.?\\d*', text).group(0))
                 elif ('official' in th_text or 'national' in th_text) and 'language' in th_text \
-                        and 'recognised' not in th_text:
-                    languages = set()
-                    for a in row.find('td').find_all('a'):
-                        text = a.text.strip()
-                        if re.match('[A-Za-z]+', text) and len(text) > 2:
-                            languages.add(text)
+                        and ('recognised' not in th_text and 'minority' not in th_text):
+                    languages = {text for text in [a.text.strip() for a in row.find('td').find_all('a')]
+                                 if re.match('^[A-Za-z\\-\' ]+$', text) and len(text) > 2}
                     if len(languages) == 0:
                         languages.add(row.find('td').text.strip())
                     info['language'] = ','.join(languages)
@@ -94,7 +91,6 @@ def get_country_info(country_name, country_url):
 
 
 def populate_database(countries):
-    print('Getting info about countries...')
     countries_obj = []
     for country_name, country_url in countries.items():
         country_name = country_name.replace('_', ' ')
@@ -102,9 +98,10 @@ def populate_database(countries):
         countries_obj.append(model.Country(name=info['name'], capital=info['capital'], population=info['population'],
                                            density=info['density'], area=info['area'], language=info['language'],
                                            time_zone=info['time_zone'], government=info['government']))
+
     repo.insert_countries(countries_obj)
 
 
 if __name__ == '__main__':
     populate_database(get_countries(BASE_URL + '/wiki/List_of_sovereign_states'))
-    # print(get_country_info('Ethiopia', BASE_URL + '/wiki/Antigua_and_Barbuda'))
+    # print(get_country_info('Romania', BASE_URL + '/wiki/Romania'))
