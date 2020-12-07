@@ -46,6 +46,7 @@ def get_country_info(country_name, country_url):
             'time_zone': None, 'government': None}
 
     citations_regex = re.compile('\\[.+?]')
+    parenthesis_regex = re.compile('\\(.+?\\)')
 
     # get html of wiki page
     page = requests.get(url=country_url)
@@ -73,17 +74,19 @@ def get_country_info(country_name, country_url):
                     info['area'] = float(re.search('\\d+\\.?\\d*', text).group(0))
                 elif ('official' in th_text or 'national' in th_text) and 'language' in th_text \
                         and ('recognised' not in th_text and 'minority' not in th_text):
-                    languages = {text for text in [a.text.strip() for a in row.find('td').find_all('a')]
-                                 if re.match('^[A-Za-z\\-\' ]+$', text) and len(text) > 2}
+                    found_languages = [a.text.strip() for a in row.find('td').find_all('a')]
+                    languages = {text for text in found_languages if re.match('^[A-Za-z\\-\' ]+$', text)
+                                 and len(text) > 2 and text != 'de jure' and text != 'de facto'}
                     if len(languages) == 0:
-                        languages.add(row.find('td').text.strip())
+                        text = row.find('td').text.strip()
+                        languages.add(citations_regex.sub('', text))
                     info['language'] = ','.join(languages)
                 elif 'time zone' in th_text:
                     text = row.find('td').text.strip()
-                    info['time_zone'] = re.search('UTC(.\\d+)?|GMT(.\\d+)?', text).group(0)
+                    info['time_zone'] = re.search('UTC(.\\d+)?|GMT(.\\d+)?', text).group(0).replace('GMT', 'UTC')
                 elif 'government' == th_text:
-                    text = row.find('td').text.strip()
-                    info['government'] = citations_regex.sub('', text)
+                    text = row.find('td').text.strip().split('\n')[0]
+                    info['government'] = parenthesis_regex.sub('', citations_regex.sub('', text))
             except AttributeError:
                 pass
 

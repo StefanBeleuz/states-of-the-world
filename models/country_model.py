@@ -18,5 +18,9 @@ class Country(Base):
     time_zone = Column('time_zone', String)
     government = Column('government', String)
 
-    def __repr__(self):
-        return self.name
+    def to_json(self):
+        return {
+            'name': self.name, 'capital': self.capital, 'population': self.population, 'density': self.density,
+            'area': self.area, 'neighbours': self.neighbours, 'language': self.language, 'time_zone': self.time_zone,
+            'government': self.government
+        }
