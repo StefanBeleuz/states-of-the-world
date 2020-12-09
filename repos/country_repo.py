@@ -43,10 +43,11 @@ def get_top_countries(limit, field, order):
         if an unknown Country attribute is passed in as a parameter.
     """
     try:
+        attr = getattr(Country, field)
         if order == 'asc':
-            return session.query(Country).order_by(getattr(Country, field)).limit(limit).all()
+            return session.query(Country).filter(attr.isnot(None)).order_by(attr).limit(limit).all()
         else:
-            return session.query(Country).order_by(getattr(Country, field).desc()).limit(limit).all()
+            return session.query(Country).filter(attr.isnot(None)).order_by(attr.desc()).limit(limit).all()
     except AttributeError:
         return None
 
@@ -71,7 +72,7 @@ def get_filtered_countries(dict_filters):
     try:
         filters = []
         for key, value in dict_filters.items():
-            if key == 'language' or key == 'government':
+            if key == 'language' or key == 'government' or key == 'time_zone' or key == 'neighbours':
                 filters.append(getattr(Country, key).like('%{}%'.format(value)))
             else:
                 op = 'eq'

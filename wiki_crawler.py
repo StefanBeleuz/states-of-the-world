@@ -1,10 +1,36 @@
 from bs4 import BeautifulSoup
 import requests
 import re
-import models.country_model as model
+from models.country_model import Country
 import repos.country_repo as repo
 
-BASE_URL = 'https://en.wikipedia.org'
+BASE_URL = 'https://ro.wikipedia.org'
+
+CAPITAL = 'capitala'
+POPULATION = 'populație'
+DENSITY = 'densitate'
+AREA = 'suprafață'
+NEIGHBOURS = 'vecini'
+LANGUAGE = 'limbi oficiale'
+TIME_ZONE = 'fus orar'
+GOVERNMENT = 'sistem politic'
+
+citations_regex = re.compile('\\[.+?]')
+word_regex = re.compile('[^0-9()\\[\\]]+')
+
+
+def format_text_to_int(text):
+    return text.replace(u'\xa0', '').replace(' ', '').replace('.', '').replace(',', '')
+
+
+def format_text_to_float(text):
+    return text.replace(u'\xa0', '').replace(' ', '').replace('.', '').replace(',', '.')
+
+
+def format_text_time_zone(text):
+    text = re.sub(r'\s*\+\s*', '+', text)
+    text = re.sub(r'\s*-\s*', '-', text)
+    return text
 
 
 def get_countries(url):
@@ -15,96 +41,91 @@ def get_countries(url):
         # parse the html response
         soup = BeautifulSoup(page.text, 'html.parser')
         # get table of countries
-        countries_table = soup.find('table', attrs={'class': 'sortable wikitable'})
+        countries_table = soup.find('table')
         # get rows from table
         rows = countries_table.find_all('tr')
         for row in rows:
             try:
-                # select the cell with country names
-                cell = row.find('td')
-                if 'other states' in cell.text.lower():
+                cells = row.find_all('td')
+                # get country info
+                country_name = cells[1].find('a').text.strip()
+                if country_name == 'Globul':
                     break
-                # get span with country name
-                span = cell.find('span')
-                # get country name
-                country_name = span['id']
-                # get country page url
-                a = cell.find('b').find('a')
-                country_url = a['href']
+                country_area = float(format_text_to_float(cells[2].text.strip()))
+                country_population = int(format_text_to_int(cells[3].text.strip()))
+                country_density = abs(float(format_text_to_float(cells[4].text.strip())))
+                country_url = cells[1].find('a')['href']
+                country = Country(name=country_name, area=country_area, population=country_population,
+                                  density=country_density, capital='', neighbours='', language='', time_zone='',
+                                  government='')
                 # add country to dict
-                countries[country_name] = country_url
+                countries[country_url] = country
             except (KeyError, AttributeError):
                 pass
 
     return countries
 
 
-def get_country_info(country_name, country_url):
-    print('Getting information about: %s...' % country_name)
-
-    info = {'name': country_name, 'capital': None, 'population': None, 'density': None, 'area': None, 'language': None,
-            'time_zone': None, 'government': None}
-
-    citations_regex = re.compile('\\[.+?]')
-    parenthesis_regex = re.compile('\\(.+?\\)')
-
+def get_country_info(country_url, country):
+    print('Getting information about: %s...' % country.name)
     # get html of wiki page
     page = requests.get(url=country_url)
     if page.status_code == 200:
         # parse the html response
         soup = BeautifulSoup(page.text, 'html.parser')
         # get table of info
-        table = soup.find('table', attrs={'class': 'infobox geography vcard'})
+        table = soup.find('table', attrs={'class': 'infocaseta'})
         # get rows from table
         rows = table.find_all('tr')
         for row in rows:
             try:
+                # get column text
                 th_text = row.find('th').text.lower()
-                if 'capital' in th_text:
-                    text = row.find('td').text.strip()
-                    info['capital'] = re.search('[^0-9()\\[\\]]+', text).group(0).strip()
-                elif 'population' in th_text:
-                    text = row.next_sibling.find('td').text.strip().replace(',', '')
-                    info['population'] = int(re.search('\\d+', text).group(0))
-                elif 'density' in th_text:
-                    text = row.find('td').text.strip().replace(',', '')
-                    info['density'] = float(re.search('\\d+\\.?\\d*', text).group(0))
-                elif 'area' in th_text:
-                    text = row.next_sibling.find('td').text.strip().replace(',', '')
-                    info['area'] = float(re.search('\\d+\\.?\\d*', text).group(0))
-                elif ('official' in th_text or 'national' in th_text) and 'language' in th_text \
-                        and ('recognised' not in th_text and 'minority' not in th_text):
-                    found_languages = [a.text.strip() for a in row.find('td').find_all('a')]
-                    languages = {text for text in found_languages if re.match('^[A-Za-z\\-\' ]+$', text)
-                                 and len(text) > 2 and text != 'de jure' and text != 'de facto'}
-                    if len(languages) == 0:
+                if CAPITAL in th_text:
+                    text = {citations_regex.sub('', a.text.strip()) for a in row.find('td').find_all('a')}
+                    if len(text) == 0:
+                        # look for non anchor text
                         text = row.find('td').text.strip()
-                        languages.add(citations_regex.sub('', text))
-                    info['language'] = ','.join(languages)
-                elif 'time zone' in th_text:
+                        country.capital = word_regex.search(text).group(0)
+                    else:
+                        text = {t for t in text if word_regex.fullmatch(t)}
+                        country.capital = ','.join(text)
+                elif NEIGHBOURS in th_text:
+                    text = {citations_regex.sub('', a.text.strip()) for a in row.find('td').find_all('a')}
+                    text = {t for t in text if len(t) > 2 and word_regex.fullmatch(t)}
+                    country.neighbours = ','.join(text)
+                elif LANGUAGE in th_text:
+                    text = {a.text.strip() for a in row.find('td').find_all('a')}
+                    text = {t for t in text if len(t) > 2 and word_regex.fullmatch(t)}
+                    if len(text) == 0:
+                        # look for non anchor text
+                        text = row.find('td').text.strip()
+                        country.language = word_regex.search(text).group(0).lower()
+                    else:
+                        country.language = ','.join(text).lower()
+                elif TIME_ZONE in th_text:
                     text = row.find('td').text.strip()
-                    info['time_zone'] = re.search('UTC(.\\d+)?|GMT(.\\d+)?', text).group(0).replace('GMT', 'UTC')
-                elif 'government' == th_text:
-                    text = row.find('td').text.strip().split('\n')[0]
-                    info['government'] = parenthesis_regex.sub('', citations_regex.sub('', text))
+                    if not re.match('[A-Za-z]', text):
+                        text = 'UTC' + text  # add UTC prefix for text like: +2
+                    text = format_text_time_zone(text)
+                    country.time_zone = citations_regex.sub('', text)
+                elif GOVERNMENT == th_text:
+                    text = row.find('td').text.strip()
+                    country.government = citations_regex.sub('', text)
             except AttributeError:
                 pass
 
-    return info
+    return country
 
 
 def populate_database(countries):
     countries_obj = []
-    for country_name, country_url in countries.items():
-        country_name = country_name.replace('_', ' ')
-        info = get_country_info(country_name, BASE_URL + country_url)
-        countries_obj.append(model.Country(name=info['name'], capital=info['capital'], population=info['population'],
-                                           density=info['density'], area=info['area'], language=info['language'],
-                                           time_zone=info['time_zone'], government=info['government']))
+    for country_url, country in countries.items():
+        country = get_country_info(BASE_URL + country_url, country)
+        countries_obj.append(country)
 
     repo.insert_countries(countries_obj)
 
 
 if __name__ == '__main__':
-    populate_database(get_countries(BASE_URL + '/wiki/List_of_sovereign_states'))
-    # print(get_country_info('Romania', BASE_URL + '/wiki/Romania'))
+    populate_database(get_countries(BASE_URL + '/wiki/Lista_țărilor_după_densitatea_populației'))
