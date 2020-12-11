@@ -1,3 +1,8 @@
+"""This module is responsible for getting information about countries from Wikipedia and populate the database.
+
+It uses Beautiful Soup for pulling data out of HTML files.
+"""
+
 from bs4 import BeautifulSoup
 import requests
 import re
@@ -20,20 +25,71 @@ word_regex = re.compile('[^0-9()\\[\\]]+')
 
 
 def format_text_to_int(text):
+    """ Return text after removing characters in order to be casted to an integer.
+
+    Parameters
+    ----------
+    text : str
+        the text to be formatted.
+
+    Returns
+    -------
+    str
+        a string formatted to be casted to integer.
+    """
     return text.replace(u'\xa0', '').replace(' ', '').replace('.', '').replace(',', '')
 
 
 def format_text_to_float(text):
+    """ Return text after removing and adding characters in order to be casted to a float number.
+
+    Parameters
+    ----------
+    text : str
+        the text to be formatted.
+
+    Returns
+    -------
+    str
+        a string formatted to be casted to float.
+    """
     return text.replace(u'\xa0', '').replace(' ', '').replace('.', '').replace(',', '.')
 
 
 def format_text_time_zone(text):
+    """ Return text after removing blank spaces inside time zone text.
+
+    Parameters
+    ----------
+    text : str
+        the text to be formatted.
+
+    Returns
+    -------
+    str
+        a string formatted to match time zone (ex. UTC+2).
+    """
     text = re.sub(r'\s*\+\s*', '+', text)
     text = re.sub(r'\s*-\s*', '-', text)
     return text
 
 
 def get_countries(url):
+    """ Return a dictionary containing pairs (key, value) where
+    the key is the wiki URL of a country and
+    the value is the Country object of the corresponding url,
+    having name, area, population and density set from the input url.
+
+    Parameters
+    ----------
+    url : str
+        the URL to wiki page containing a table with countries name, area, population and density.
+
+    Returns
+    -------
+    dict
+        a dictionary containing (key, value) pairs of URL of the country and Country object.
+    """
     countries = {}
     # get html of wiki page
     page = requests.get(url=url)
@@ -67,6 +123,21 @@ def get_countries(url):
 
 
 def get_country_info(country_url, country):
+    """ Return country filled with information (capital, neighbours, language, time zone and government)
+    from the corresponding wiki page, where country_url is the URL of the page.
+
+    Parameters
+    ----------
+    country_url : str
+        the URL to wiki page containing information about the country.
+    country : Country
+        the Country object to be filled with information from wiki page.
+
+    Returns
+    -------
+    Country
+        the Country object given as parameter after has been filled with information.
+    """
     print('Getting information about: %s...' % country.name)
     # get html of wiki page
     page = requests.get(url=country_url)
@@ -119,6 +190,13 @@ def get_country_info(country_url, country):
 
 
 def populate_database(countries):
+    """ Insert countries into database.
+
+    Parameters
+    ----------
+    countries : dict
+        the dictionary containing (key, value) pairs of URL of the country and Country object.
+    """
     countries_obj = []
     for country_url, country in countries.items():
         country = get_country_info(BASE_URL + country_url, country)

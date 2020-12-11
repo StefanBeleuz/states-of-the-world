@@ -10,8 +10,7 @@ Base = declarative_base()
 
 
 class Country(Base):
-    """
-    A class used to represent a Country, modeled from database
+    """A class used to represent a Country, modeled from database.
 
     Attributes
     ----------
@@ -39,9 +38,8 @@ class Country(Base):
     Methods
     -------
     to_json()
-        Returns the Country's attributes stored in a dictionary
+        returns the Country's attributes stored in a dictionary.
     """
-
     __tablename__ = 'countries'
 
     id = Column('id', Integer, primary_key=True)
@@ -67,7 +65,7 @@ class Country(Base):
         self.government = government
 
     def to_json(self):
-        """ Returns the Country's attributes stored in a dictionary """
+        """Returns the Country's attributes stored in a dictionary."""
         return {
             'name': self.name, 'capital': self.capital, 'population': self.population, 'density': self.density,
             'area': self.area, 'neighbours': self.neighbours, 'language': self.language, 'time_zone': self.time_zone,

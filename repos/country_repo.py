@@ -28,11 +28,11 @@ def get_top_countries(limit, field, order):
     Parameters
     ----------
     limit : int
-        The number of countries returned.
+        the number of countries returned.
     field: str
-        The attribute of the Country to filter countries by.
+        the attribute of the Country to filter countries by.
     order: str
-        Specify the order in which the countries are sorted.
+        specify the order in which the countries are sorted.
         If order is 'asc' then countries are listed ascending, else countries are listed descending.
 
     Returns
@@ -55,20 +55,20 @@ def get_top_countries(limit, field, order):
 def get_filtered_countries(dict_filters):
     """Returns countries from database filtered by a number of filters.
 
-        Parameters
-        ----------
-        dict_filters : dict
-            The filters to be applied.
-            key   = Country attribute
-            value = filter value
+    Parameters
+    ----------
+    dict_filters : dict
+        the filters to be applied.
+        key   = Country attribute
+        value = filter value
 
-        Returns
-        -------
-        list
-            a list of filtered countries based on the passed in parameters.
-        None
-            if an unknown Country attribute is passed.
-        """
+    Returns
+    -------
+    list
+        a list of filtered countries based on the passed in parameters.
+    None
+        if an unknown Country attribute is passed.
+    """
     try:
         filters = []
         for key, value in dict_filters.items():
@@ -92,12 +92,11 @@ def get_filtered_countries(dict_filters):
 def insert_countries(countries):
     """Insert a list of countries into database.
 
-        Parameters
-        ----------
-        countries : list[Country]
-            The list of countries to be stored into database.
+    Parameters
+    ----------
+    countries : list
+        the list of countries to be stored into database.
     """
-
     print('Inserting countries into database...')
     session.add_all(countries)
     session.commit()
