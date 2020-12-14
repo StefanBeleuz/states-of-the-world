@@ -3,7 +3,7 @@
 It uses SQLAlchemy as on ORM.
 """
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, or_
 from sqlalchemy.orm import sessionmaker
 from models.country_model import Country
 
@@ -12,7 +12,7 @@ session = sessionmaker(bind=engine)()
 
 
 def get_all_countries():
-    """ Returns all countries stored in the database.
+    """Returns all countries stored in the database.
 
     Returns
     -------
@@ -73,7 +73,10 @@ def get_filtered_countries(dict_filters):
         filters = []
         for key, value in dict_filters.items():
             if key == 'language' or key == 'government' or key == 'time_zone' or key == 'neighbours':
-                filters.append(getattr(Country, key).like('%{}%'.format(value)))
+                if key == 'time_zone' and value == 'UTC':
+                    filters.append(or_(getattr(Country, key) == 'UTC', getattr(Country, key).like('UTC+0')))
+                else:
+                    filters.append(getattr(Country, key).like('%{}%'.format(value)))
             else:
                 op = 'eq'
                 if value[2] == '-':
@@ -90,7 +93,7 @@ def get_filtered_countries(dict_filters):
 
 
 def insert_countries(countries):
-    """Insert a list of countries into database.
+    """Inserts a list of countries into database.
 
     Parameters
     ----------

@@ -1,10 +1,13 @@
 """This module is responsible for getting information about countries from Wikipedia and populate the database.
 
-It uses Beautiful Soup for pulling data out of HTML files.
+It uses requests for getting a web page,
+unidecode to sanitize data,
+Beautiful Soup for pulling data out of HTML files.
 """
 
 from bs4 import BeautifulSoup
 import requests
+import unidecode
 import re
 from models.country_model import Country
 import repos.country_repo as repo
@@ -25,7 +28,7 @@ word_regex = re.compile('[^0-9()\\[\\]]+')
 
 
 def format_text_to_int(text):
-    """ Return text after removing characters in order to be casted to an integer.
+    """Returns text after removing characters in order to be casted to an integer.
 
     Parameters
     ----------
@@ -41,7 +44,7 @@ def format_text_to_int(text):
 
 
 def format_text_to_float(text):
-    """ Return text after removing and adding characters in order to be casted to a float number.
+    """Returns text after removing and adding characters in order to be casted to a float number.
 
     Parameters
     ----------
@@ -57,7 +60,7 @@ def format_text_to_float(text):
 
 
 def format_text_time_zone(text):
-    """ Return text after removing blank spaces inside time zone text.
+    """Returns text after removing blank spaces inside time zone text.
 
     Parameters
     ----------
@@ -75,7 +78,7 @@ def format_text_time_zone(text):
 
 
 def get_countries(url):
-    """ Return a dictionary containing pairs (key, value) where
+    """Returns a dictionary containing pairs (key, value) where
     the key is the wiki URL of a country and
     the value is the Country object of the corresponding url,
     having name, area, population and density set from the input url.
@@ -123,7 +126,7 @@ def get_countries(url):
 
 
 def get_country_info(country_url, country):
-    """ Return country filled with information (capital, neighbours, language, time zone and government)
+    """Returns country filled with information (capital, neighbours, language, time zone and government)
     from the corresponding wiki page, where country_url is the URL of the page.
 
     Parameters
@@ -189,8 +192,31 @@ def get_country_info(country_url, country):
     return country
 
 
+def unidecode_country(country):
+    """Replaces diacritics with corresponding english characters.
+
+    Parameters
+    ----------
+    country : Country
+        the Country object to have fields sanitized.
+
+    Returns
+    -------
+    Country
+        the Country object after fields were sanitized.
+    """
+    country.name = unidecode.unidecode(country.name)
+    country.capital = unidecode.unidecode(country.capital)
+    country.neighbours = unidecode.unidecode(country.neighbours)
+    country.language = unidecode.unidecode(country.language)
+    country.time_zone = unidecode.unidecode(country.time_zone)
+    country.government = unidecode.unidecode(country.government)
+
+    return country
+
+
 def populate_database(countries):
-    """ Insert countries into database.
+    """Inserts countries into database.
 
     Parameters
     ----------
@@ -200,6 +226,7 @@ def populate_database(countries):
     countries_obj = []
     for country_url, country in countries.items():
         country = get_country_info(BASE_URL + country_url, country)
+        country = unidecode_country(country)
         countries_obj.append(country)
 
     repo.insert_countries(countries_obj)

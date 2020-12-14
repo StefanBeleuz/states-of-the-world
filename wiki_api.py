@@ -11,7 +11,7 @@ app.config['JSON_SORT_KEYS'] = False
 
 
 def get_json(countries):
-    """ Return a JSON of a list of Country object that were also converted to JSON.
+    """Returns a JSON of a list of Country object that were also converted to JSON.
 
     Parameters
     ----------
@@ -28,7 +28,7 @@ def get_json(countries):
 
 @app.route('/')
 def get_all_countries():
-    """ Return a JSON containing all countries from database.
+    """Returns a JSON containing all countries from database.
 
     Returns
     -------
@@ -42,7 +42,7 @@ def get_all_countries():
 @app.route('/top-<int:limit>-countries-<field>')
 @app.route('/top-<int:limit>-countries-<field>-<order>')
 def get_top_countries(limit, field, order='desc'):
-    """ Return a JSON containing a top of countries from database, based on the specified filed and order.
+    """Returns a JSON containing a top of countries from database, based on the specified filed and order.
 
     Parameters
     ----------
@@ -68,7 +68,7 @@ def get_top_countries(limit, field, order='desc'):
 
 @app.route('/filter-countries')
 def get_filtered_countries():
-    """ Return a JSON containing a list of countries from database, filtered by a set of rules.
+    """Returns a JSON containing a list of countries from database, filtered by a set of rules.
     The rules are passed in the query string
     and accept one of the following comparators: eq, gt, lt (eq is the default).
     ex: /filter-countries?population=lt-20000 will return the countries with population less than 20000.
