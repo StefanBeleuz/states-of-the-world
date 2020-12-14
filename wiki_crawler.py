@@ -95,7 +95,12 @@ def get_countries(url):
     """
     countries = {}
     # get html of wiki page
-    page = requests.get(url=url)
+    try:
+        page = requests.get(url=url)
+    except requests.exceptions.ConnectionError:
+        print("Connection error!")
+        return None
+
     if page.status_code == 200:
         # parse the html response
         soup = BeautifulSoup(page.text, 'html.parser')
@@ -233,4 +238,6 @@ def populate_database(countries):
 
 
 if __name__ == '__main__':
-    populate_database(get_countries(BASE_URL + '/wiki/Lista_țărilor_după_densitatea_populației'))
+    _countries = get_countries(BASE_URL + '/wiki/Lista_țărilor_după_densitatea_populației')
+    if _countries is not None:
+        populate_database(_countries)

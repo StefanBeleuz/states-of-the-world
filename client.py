@@ -59,6 +59,8 @@ def make_request(route, payload):
             print('404 - Not found!')
     except requests.exceptions.ConnectionError:
         print("Couldn't connect to api!")
+    except requests.exceptions.InvalidURL:
+        print('Invalid route!')
 
 
 def main():
